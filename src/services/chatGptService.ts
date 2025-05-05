@@ -1,6 +1,8 @@
 "use client"
 
 // Service pour gérer les appels à l'API ChatGPT
+import OpenAI from 'openai';
+import { enrichContextWithComponents } from './ragService';
 
 type ChatGptResponse = {
   components: Array<{
@@ -15,56 +17,52 @@ type ChatGptRequestOptions = {
   systemPrompt?: string;
 };
 
-// URL de l'API ChatGPT (à configurer dans un .env en production)
-const CHATGPT_API_URL = process.env.NEXT_PUBLIC_CHATGPT_API_URL || "https://api.openai.com/v1/chat/completions";
-const CHATGPT_API_KEY = process.env.NEXT_PUBLIC_CHATGPT_API_KEY || "";
+// Configuration de l'API OpenAI (à configurer dans un .env en production)
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_CHATGPT_API_KEY || "";
+
+// Initialisation du client OpenAI
+const openai = new OpenAI({
+  apiKey: OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true // Nécessaire pour l'utilisation côté client
+});
+
 
 // Prompt par défaut qui explique à ChatGPT comment générer les composants
 const DEFAULT_SYSTEM_PROMPT = `
-Tu es un assistant spécialisé dans la génération de composants UI basés sur des intentions vocales.
+Tu es un assistant spécialisé dans la génération de composants UI pédagogiques et interactifs à partir d’une intention vocale.
+
+🎯 Objectif : Créer une **interface segmentée**, **structurée en plusieurs cartes**, et **visuellement attrayante**. Chaque segment doit contenir une idée, il doit y'avoir plusieurs segments.
+
+🧱 Structure attendue :
+1. **Carte d’introduction** (FloatingCard)
+   - Utilise un FloatingTitle avec un ton engageant et un FloatingText pour introduire simplement le sujet.
+2. **Cartes de contenu** : une carte = un concept.
+   - Présente les infos de manière visuelle et ludique (listes, équations animées, visualisations…).
+   - Limite le texte par carte, et privilégie l'interaction ou la mise en forme.
+3. **Activité interactive (jeu ou quiz)** : toujours dans une **carte dédiée**.
+   - Utilise 'MathGameBuilder' si l’intention évoque un jeu.
+4. **Conclusion ou transition** : bouton, texte ou ouverture vers une autre activité.
+
+2. Accessibilité et lisibilité :
+- Utilise des couleurs harmonieuses et contrastées.
+- Ajoute des classes Tailwind telles que p-4, rounded-2xl, shadow-lg, text-center, my-4, leading-relaxed, bg-white/80 pour améliorer la lisibilité.
+- Utilise une taille de texte base ou lg.
+
 Tu dois analyser la transcription vocale et générer une réponse JSON avec les composants à afficher.
-
-Voici les composants disponibles et leurs propriétés:
-
-1. FloatingCard - Un conteneur flottant
-   - color: 'blue' | 'pink' | 'green' | 'purple'
-   - className: string (classes Tailwind additionnelles)
-
-2. FloatingTitle - Un titre flottant
-   - text: string (le texte du titre)
-   - level: 1 | 2 | 3 (niveau du titre)
-   - color: 'blue' | 'pink' | 'green' | 'purple'
-   - className: string (classes Tailwind additionnelles)
-
-3. FloatingText - Un paragraphe flottant
-   - children: string (le texte)
-   - color: 'blue' | 'pink' | 'green' | 'purple'
-   - size: 'sm' | 'base' | 'lg'
-   - className: string (classes Tailwind additionnelles)
-
-4. FloatingList - Une liste flottante
-   - items: string[] (les éléments de la liste)
-   - color: 'blue' | 'pink' | 'green' | 'purple'
-   - className: string (classes Tailwind additionnelles)
-
-5. FloatingChart - Un graphique flottant
-   - type: 'line' | 'bar'
-   - data: Array<{name: string, value: number}>
-   - color: 'blue' | 'pink' | 'green' | 'purple'
-   - className: string (classes Tailwind additionnelles)
+Demandes toi ce que l'utilisateur veut voir et comprendre.
 
 Tu dois retourner une réponse au format JSON avec la structure suivante:
 {
   "components": [
     {
-      "type": "FloatingCard",
+      "type": "componentName",
       "props": {
         "color": "blue",
         "className": "w-full max-w-md mx-auto"
       },
       "children": [
         {
-          "type": "FloatingTitle",
+          "type": "componentName",
           "props": {
             "text": "Titre de la carte",
             "level": 1,
@@ -94,55 +92,61 @@ export async function generateComponentsFromIntent(
   const { transcript, context = {}, systemPrompt = DEFAULT_SYSTEM_PROMPT } = options;
 
   try {
-    // Préparer le message pour ChatGPT
+    // Enrichir le contexte avec les informations des composants pertinents
+    const componentsContext = await enrichContextWithComponents(transcript);
+    const enrichedContext = {
+      ...context,
+      availableComponents: componentsContext
+    };
+    // Préparer le message pour ChatGPT avec le contexte enrichi
     const messages = [
       {
         role: "system",
-        content: systemPrompt,
-      },
-      {
-        role: "user",
-        content: `Transcription: "${transcript}"
-${context ? `Contexte: ${JSON.stringify(context)}` : ""}
+        content: `${systemPrompt}
 
-Génère les composants UI appropriés basés sur cette transcription.`,
+      Contexte des composants disponibles:
+      ${JSON.stringify(enrichedContext.availableComponents, null, 2)}`,
+            },
+            {
+              role: "user",
+              content: `Transcription: "${transcript}"
+      ${context ? `Contexte additionnel: ${JSON.stringify(context)}` : ""}
+      Génère les composants UI appropriés basés sur cette transcription et le contexte fourni.`,
       },
     ];
 
-    // Appeler l'API ChatGPT
-    const response = await fetch(CHATGPT_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${CHATGPT_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4", // ou un autre modèle selon les besoins
-        messages,
-        temperature: 0.7,
-        max_tokens: 1000,
-      }),
+    // Appeler l'API ChatGPT avec la bibliothèque OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-nano", // ou un autre modèle selon les besoins
+      messages: messages as any, // Type casting pour éviter les erreurs de type
+      temperature: 0.7,
+      max_tokens: 1000,
     });
 
-    if (!response.ok) {
-      throw new Error(`Erreur API ChatGPT: ${response.statusText}`);
-    }
+    // Log de la réponse complète de l'API pour le débogage
+    console.log("Réponse complète de l'API OpenAI:", JSON.stringify(completion, null, 2));
 
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
+    const content = completion.choices[0]?.message?.content;
 
     if (!content) {
+      console.error("Erreur: Réponse vide de ChatGPT");
       throw new Error("Réponse vide de ChatGPT");
     }
+
+    console.log("Contenu de la réponse:", content);
 
     // Extraire le JSON de la réponse (au cas où ChatGPT renvoie du texte avant/après le JSON)
     const jsonMatch = content.match(/\{[\s\S]*\}/); 
     if (!jsonMatch) {
+      console.error("Erreur: Impossible d'extraire le JSON de la réponse");
       throw new Error("Impossible d'extraire le JSON de la réponse");
     }
 
+    console.log("JSON extrait:", jsonMatch[0]);
+
     // Parser le JSON
     const componentsData = JSON.parse(jsonMatch[0]) as ChatGptResponse;
+    console.log("Données des composants parsées:", componentsData);
     return componentsData;
   } catch (error) {
     console.error("Erreur lors de la génération des composants:", error);

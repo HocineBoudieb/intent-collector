@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import IntentCollector from "@/components/IntentCollector"
-import { renderComponents } from "@/components/FloatingComponents"
+import { RenderComponents } from "@/components/FloatingComponents"
 
 export default function Home() {
   const [renderedComponent, setRenderedComponent] = useState<React.ReactNode>(null)
@@ -10,7 +10,7 @@ export default function Home() {
   const handleIntent = (data: any) => {
     // Si les données reçues contiennent déjà la structure 'components', on les utilise directement
     if (data.components) {
-      setRenderedComponent(renderComponents(data))
+      setRenderedComponent(<RenderComponents components={data.components} />)
     } else {
       // Sinon, on adapte l'ancien format au nouveau format
       const { component, props } = data
@@ -22,7 +22,7 @@ export default function Home() {
           }
         ]
       }
-      setRenderedComponent(renderComponents(adaptedData))
+      setRenderedComponent(<RenderComponents components={adaptedData.components} />)
     }
   }
 

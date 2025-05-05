@@ -9,8 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.42",
+    "@langchain/openai": "^0.5.10",
+    "@langchain/pinecone": "^0.2.0",
+    "@pinecone-database/pinecone": "^5.1.2",
+    "chromadb": "^2.3.0",
+    "console": "^0.7.2",
     "framer-motion": "^12.9.2",
+    "fs": "^0.0.1-security",
+    "langchain": "^0.3.24",
     "next": "15.3.0",
+    "openai": "^4.97.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^2.15.3"
