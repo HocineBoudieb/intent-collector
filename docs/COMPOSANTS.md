@@ -121,26 +121,37 @@ Formes géométriques animées.
 
 ## Composants de Jeu
 
-### FloatingMathGame
-Jeu mathématique interactif.
-```tsx
-<FloatingMathGame 
-  type="addition" 
-  difficulty="easy"
-/>
-```
-- **Types**: 'addition' | 'multiplication' | 'fractions'
-- **Difficultés**: 'easy' | 'medium' | 'hard'
-
 ### CustomMathGame
 Jeu mathématique personnalisable.
 ```tsx
 <CustomMathGame 
-  config={{
+  config={
     title: "Mon Jeu",
-    problems: [...],
-    theme: customThemes.space
-  }}
+    description: "Calcule des aires, périmètres et volumes de figures géométriques",
+    problems: [
+        {
+        question: "Quelle est l'aire d'un carré de côté 5 cm?",
+        options: ["25 cm²", "20 cm²", "10 cm²", "15 cm²"],
+        correctAnswer: "25 cm²",
+        explanation: "L'aire d'un carré est égale au carré de la longueur du côté: 5² = 25 cm²."
+        },
+        {
+        question: "Calcule le périmètre d'un rectangle de longueur 8 cm et de largeur 5 cm",
+        options: ["26 cm", "40 cm", "13 cm", "16 cm"],
+        correctAnswer: "26 cm",
+        explanation: "Le périmètre d'un rectangle est égal à 2 × (longueur + largeur): 2 × (8 + 5) = 2 × 13 = 26 cm."
+        },
+        {
+        question: "Quel est le volume d'un cube d'arête 3 cm?",
+        options: ["27 cm³", "9 cm³", "18 cm³", "12 cm³"],
+        correctAnswer: "27 cm³",
+        explanation: "Le volume d'un cube est égal au cube de la longueur de l'arête: 3³ = 27 cm³."
+        }
+    ],
+  theme: 'space',
+  timeLimit: 60,
+  showExplanations: true
+  }
 />
 ```
 
@@ -230,35 +241,3 @@ const customThemes = {
    - Créez des thèmes cohérents
    - Réutilisez les animations communes
 
-## Exemples d'Utilisation
-
-### Interface Mathématique Complete
-```tsx
-<FloatingCustomContainer>
-  <FloatingTitle text="Cours de Mathématiques" />
-  
-  <FloatingMathCard theme="space">
-    <FloatingEquation equation="x² + 2x + 1 = 0" />
-    <FloatingPolynomial coefficients={[1, 2, 1]} />
-  </FloatingMathCard>
-  
-  <FloatingMathGame type="addition" difficulty="medium" />
-</FloatingCustomContainer>
-```
-
-### Animation Séquentielle
-```tsx
-<FloatingCustomSequence
-  items={[
-    {
-      element: <FloatingTitle text="Étape 1" />,
-      animation: customAnimations.fade
-    },
-    {
-      element: <FloatingEquation equation="2 + 2 = 4" />,
-      animation: customAnimations.slide,
-      delay: 0.5
-    }
-  ]}
-/>
-```

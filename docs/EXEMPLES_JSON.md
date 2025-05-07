@@ -86,21 +86,6 @@ Ce document fournit des exemples concrets d'utilisation des composants flottants
 
 ## Composants de Jeu
 
-### FloatingMathGame
-```json
-{
-  "component": "FloatingMathGame",
-  "props": {
-    "type": "addition",
-    "difficulty": "medium",
-    "config": {
-      "maxNumber": 100,
-      "questionsCount": 10,
-      "timeLimit": 300
-    }
-  }
-}
-```
 
 ### CustomMathGame
 ```json
@@ -172,10 +157,30 @@ Ce document fournit des exemples concrets d'utilisation des composants flottants
         }
       },
       {
-        "component": "FloatingMathGame",
+        "component": "CustomMathGame",
         "props": {
-          "type": "addition",
-          "difficulty": "medium"
+          "config": {
+            "title": "Jeu d'Algèbre",
+            "theme": {
+              "name": "space",
+              "colors": {
+                "primary": "#4A90E2",
+                "secondary": "#F5A623"
+              }
+            },
+            "problems": [
+              {
+                "question": "Résoudre: 2x + 3 = 7",
+                "answer": "2",
+                "points": 10
+              },
+              {
+                "question": "Factoriser: x² + 2x + 1",
+                "answer": "(x + 1)²",
+                "points": 15
+              }
+            ]
+          }
         }
       }
     ]

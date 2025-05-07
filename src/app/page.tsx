@@ -27,7 +27,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-gray-100 relative p-8">
+    <main className="min-h-screen w-full bg-blue-200 relative p-8">
       {renderedComponent && (
         <div className="mb-10">
           {renderedComponent}

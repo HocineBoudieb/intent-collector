@@ -33,6 +33,7 @@ export const pastelText = {
   pink: 'text-pink-800',
   green: 'text-green-800',
   purple: 'text-purple-800',
+  black: 'text-black',
 };
 
 type FloatingProps = {
@@ -63,7 +64,7 @@ export const FloatingTitle: FC<{ text: string; level?: 1 | 2 | 3; className?: st
   text,
   level = 1,
   className = '',
-  color = 'purple',
+  color = 'black',
 }) => {
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
   return (
@@ -81,7 +82,7 @@ export const FloatingTitle: FC<{ text: string; level?: 1 | 2 | 3; className?: st
 export const FloatingText: FC<FloatingProps & { size?: 'sm' | 'base' | 'lg' }> = ({
   children,
   className = '',
-  color = 'green',
+  color = 'black',
   size = 'base',
 }) => (
   <motion.p
@@ -97,7 +98,7 @@ export const FloatingText: FC<FloatingProps & { size?: 'sm' | 'base' | 'lg' }> =
 export const FloatingList: FC<{ items: string[]; className?: string; color?: keyof typeof pastelText }> = ({
   items,
   className = '',
-  color = 'pink',
+  color = 'black',
 }) => (
   <motion.ul
     className={`list-disc pl-5 ${pastelText[color]} ${className}`}
@@ -128,7 +129,7 @@ export const FloatingInput: FC<{
 export const FloatingButton: FC<FloatingProps & { onClick?: () => void }> = ({
   children,
   className = '',
-  color = 'purple',
+  color = 'black',
   onClick,
 }) => (
   <motion.button
@@ -274,7 +275,7 @@ export const FloatingEquation: FC<{
   color?: keyof typeof pastelText;
   animated?: boolean;
   className?: string;
-}> = ({ equation, color = 'blue', animated = true, className = '' }) => {
+}> = ({ equation, color = 'black', animated = true, className = '' }) => {
   // Diviser l'équation en parties (nombres, opérateurs, etc.)
   const parts = equation.split(/([+\-×÷=()])/g).filter(part => part.trim() !== '');
 
@@ -423,7 +424,7 @@ export const FloatingPolynomial: FC<{
   color?: keyof typeof pastelText;
   animated?: boolean;
   className?: string;
-}> = ({ coefficients, variable = 'x', color = 'blue', animated = true, className = '' }) => {
+}> = ({ coefficients, variable = 'x', color = 'black', animated = true, className = '' }) => {
   // Fonction pour formater un terme du polynôme
   const formatTerm = (coefficient: number, power: number): string => {
     if (coefficient === 0) return '';
@@ -593,7 +594,7 @@ export const FloatingCoordinateSystem: FC<{
   size?: number;
   color?: keyof typeof pastelText;
   className?: string;
-}> = ({ points = [], showGrid = true, size = 200, color = 'blue', className = '' }) => {
+}> = ({ points = [], showGrid = true, size = 200, color = 'black', className = '' }) => {
   // Calculer les limites du système de coordonnées
   const padding = 20;
   const axisSize = size - 2 * padding;
@@ -860,112 +861,7 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
     // Rendre le composant avec ses props
     return React.createElement(Component, finalProps);
   };
-  
-  // Fonction pour générer une position aléatoire avec une meilleure distribution
-  const generateRandomPosition = () => {
-    return {
-      x: 5 + Math.random() * 85, // Pourcentage de la largeur de l'écran (5-90%)
-      y: 5 + Math.random() * 85, // Pourcentage de la hauteur de l'écran (5-90%)
-      rotation: (Math.random() * 6) - 3, // Rotation légère entre -3 et 3 degrés
-      scale: 0.95 + (Math.random() * 0.1) // Échelle entre 0.95 et 1.05
-    };
-  };
 
-  // Fonction pour vérifier si deux positions se chevauchent
-  const checkOverlap = (pos1, pos2, minDistance = 40) => {
-    // Augmentation de la distance minimale pour éviter les chevauchements
-    const dx = Math.abs(pos1.x - pos2.x);
-    const dy = Math.abs(pos1.y - pos2.y);
-    
-    // Utiliser une formule plus stricte pour la détection de chevauchement
-    // qui prend en compte la taille relative des composants
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const scaleFactor = Math.max(pos1.scale, pos2.scale);
-    
-    return distance < (minDistance * scaleFactor);
-  };
-
-  // Diviser l'écran en sections pour une meilleure distribution
-  const generateSmartPosition = (index, total) => {
-    // Créer une grille virtuelle pour mieux répartir les éléments
-    const gridSize = Math.ceil(Math.sqrt(total * 1.5)); // Augmenter la taille de la grille pour plus d'espace
-    const cellWidth = 85 / gridSize;
-    const cellHeight = 85 / gridSize;
-    
-    // Calculer la position de base dans la grille avec un décalage pour les lignes paires
-    const row = Math.floor(index / gridSize);
-    const col = index % gridSize;
-    
-    // Décaler les lignes paires pour créer un motif en quinconce (comme un damier)
-    const offsetX = row % 2 === 0 ? 0 : cellWidth / 2;
-    
-    // Réduire l'aléatoire pour maintenir une meilleure structure
-    const randomX = (Math.random() * (cellWidth * 0.4));
-    const randomY = (Math.random() * (cellHeight * 0.4));
-    
-    return {
-      x: offsetX + (col * cellWidth) + randomX + 7.5, // Marge plus grande sur les bords
-      y: (row * cellHeight) + randomY + 7.5, // Marge plus grande sur les bords
-      rotation: (Math.random() * 4) - 2, // Rotation plus légère
-      scale: 0.97 + (Math.random() * 0.06) // Échelle plus uniforme
-    };
-  };
-
-  // Générer des positions pour tous les composants
-  const positions = [];
-  const total = components.length;
-  
-  for (let i = 0; i < total; i++) {
-    let newPos;
-    let attempts = 0;
-    const maxAttempts = 50; // Augmenter le nombre de tentatives pour trouver une bonne position
-    
-    // Commencer avec une position intelligente basée sur la grille
-    newPos = generateSmartPosition(i, total);
-    
-    // Affiner si nécessaire pour éviter les chevauchements
-    while (positions.some(pos => checkOverlap(pos, newPos)) && attempts < maxAttempts) {
-      if (attempts < 25) {
-        // Essayer d'abord avec des positions intelligentes légèrement modifiées
-        const basePos = generateSmartPosition(i, total);
-        // Ajouter un décalage plus important à chaque tentative
-        const offset = (attempts / 5) * 10;
-        newPos = {
-          x: basePos.x + (Math.random() * offset) - (offset/2),
-          y: basePos.y + (Math.random() * offset) - (offset/2),
-          rotation: basePos.rotation,
-          scale: basePos.scale
-        };
-      } else {
-        // Si ça ne fonctionne toujours pas, essayer avec une position complètement aléatoire
-        newPos = generateRandomPosition();
-      }
-      attempts++;
-    }
-    
-    // Si après toutes les tentatives, il y a toujours chevauchement, ajuster la position
-    // en augmentant progressivement la distance par rapport aux autres éléments
-    if (positions.some(pos => checkOverlap(pos, newPos))) {
-      const overlappingPositions = positions.filter(pos => checkOverlap(pos, newPos));
-      const avgX = overlappingPositions.reduce((sum, pos) => sum + pos.x, 0) / overlappingPositions.length;
-      const avgY = overlappingPositions.reduce((sum, pos) => sum + pos.y, 0) / overlappingPositions.length;
-      
-      // S'éloigner de la position moyenne des éléments qui se chevauchent
-      const dirX = newPos.x > avgX ? 1 : -1;
-      const dirY = newPos.y > avgY ? 1 : -1;
-      
-      newPos.x += dirX * 15;
-      newPos.y += dirY * 15;
-      
-      // S'assurer que la position reste dans les limites
-      newPos.x = Math.max(5, Math.min(90, newPos.x));
-      newPos.y = Math.max(5, Math.min(90, newPos.y));
-    }
-    
-    positions.push(newPos);
-  }
-
-  // Rendre tous les composants avec leurs positions aléatoires et animations
   // Hook pour détecter la taille de l'écran
   const [windowSize, setWindowSize] = React.useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -987,33 +883,102 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Calculer la disposition en grille organisée
+  const calculateGridPositions = () => {
+    const total = components.length;
+    
+    // Déterminer le nombre optimal de colonnes selon la taille de l'écran
+    let columns;
+    if (windowSize.width < 640) {
+      columns = 1; // Mobile: 1 colonne
+    } else if (windowSize.width < 1024) {
+      columns = 2; // Tablette: 2 colonnes
+    } else if (windowSize.width < 1440) {
+      columns = 3; // Desktop: 3 colonnes
+    } else {
+      columns = 4; // Grand écran: 4 colonnes
+    }
+
+    // Déterminer le nombre de lignes nécessaires
+    const rows = Math.ceil(total / columns);
+    
+    // Définir les marges et espaces
+    const horizontalMargin = 5;  // % depuis les bords horizontaux
+    const verticalMargin = 5;    // % depuis les bords verticaux
+    const usableWidth = 100 - (horizontalMargin * 2);
+    const usableHeight = 100 - (verticalMargin * 2);
+    
+    // Espacement entre éléments (gap)
+    const horizontalGap = usableWidth * 0.05;  // 5% de l'espace utilisable comme gap horizontal
+    const verticalGap = usableHeight * 0.05;   // 5% de l'espace utilisable comme gap vertical
+    
+    // Calculer la largeur et hauteur effective de chaque cellule de la grille
+    const cellWidth = (usableWidth - (horizontalGap * (columns - 1))) / columns;
+    const cellHeight = (usableHeight - (verticalGap * (rows - 1))) / rows;
+    
+    // Générer les positions avec un léger décalage pour l'effet flottant
+    return components.map((_, index) => {
+      const row = Math.floor(index / columns);
+      const col = index % columns;
+      
+      // Position de base dans la grille
+      const baseX = horizontalMargin + (col * (cellWidth + horizontalGap));
+      const baseY = verticalMargin + (row * (cellHeight + verticalGap));
+      
+      // Ajouter un léger décalage pour l'effet "quinconce" aux lignes paires
+      const offsetX = row % 2 === 0 ? 0 : cellWidth * 0.05;
+      
+      // Légère variation de position pour éviter une grille trop rigide
+      // (limité à 5% de la taille de la cellule)
+      const variationX = (Math.random() - 0.5) * (cellWidth * 0.05);
+      const variationY = (Math.random() - 0.5) * (cellHeight * 0.05);
+      
+      // Légère variation d'échelle et de rotation
+      const scale = 0.98 + (Math.random() * 0.04); // Entre 0.98 et 1.02
+      const rotation = (Math.random() * 2) - 1;    // Entre -1 et 1 degré
+      
+      // Animation plus douce
+      const animationSpeed = 15 + (Math.random() * 5); // Entre 15 et 20s
+      const animationDelay = index * 0.1;              // Écart de 0.1s entre chaque élément
+      const floatDistance = 2 + (Math.random() * 3);   // Entre 2 et 5 pixels
+      
+      return {
+        x: baseX + offsetX + variationX,
+        y: baseY + variationY,
+        scale,
+        rotation,
+        animationSpeed,
+        animationDelay,
+        floatDistance,
+        cellWidth,     // Stocker pour calculer la taille max
+        cellHeight     // Stocker pour calculer la taille max
+      };
+    });
+  };
+
+  // Calculer les positions en grille
+  const positions = calculateGridPositions();
+
   // Ajuster la taille maximale des composants en fonction de la taille de l'écran
-  const getMaxWidth = () => {
-    if (windowSize.width < 640) return '85%'; // Mobile
-    if (windowSize.width < 1024) return '45%'; // Tablette
-    return '400px'; // Desktop
+  const getMaxWidth = (cellWidth) => {
+    if (windowSize.width < 640) return '90%'; // Mobile
+    if (windowSize.width < 1024) return '85%'; // Tablette
+    return `${cellWidth * 0.9}%`; // Desktop: 90% de la largeur de la cellule
   };
 
   return (
     <div className="relative w-full min-h-screen overflow-hidden p-4">
       {components.map((component, index) => {
         const pos = positions[index];
-        // Générer des délais et durées d'animation différents pour chaque composant
-        const animationDelay = Math.random() * 2;
-        const animationDuration = 15 + (Math.random() * 10);
-        // Réduire la distance de flottement pour limiter les chevauchements pendant l'animation
-        const floatDistance = 5 + (Math.random() * 8);
         
         // Déterminer la taille maximale en fonction du type de composant
         const getComponentMaxWidth = () => {
-          const baseWidth = getMaxWidth();
+          const baseWidth = getMaxWidth(pos.cellWidth);
           const componentType = component.type;
           
           // Ajuster la taille en fonction du type de composant
-          if (componentType === 'FloatingMathCard') {
-            return windowSize.width < 640 ? '90%' : windowSize.width < 1024 ? '45%' : '400px';
-          } else if (componentType === 'FloatingCard') {
-            return windowSize.width < 640 ? '85%' : windowSize.width < 1024 ? '40%' : '380px';
+          if (componentType === 'FloatingMathCard' || componentType === 'FloatingCard') {
+            return windowSize.width < 640 ? '90%' : windowSize.width < 1024 ? '80%' : `${pos.cellWidth * 0.95}%`;
           } else {
             return baseWidth;
           }
@@ -1023,29 +988,28 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
           <motion.div 
             key={index}
             className="absolute" 
-            initial={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ 
               opacity: 1, 
               scale: pos.scale,
-              x: [0, floatDistance/2, -floatDistance/2, 0],
-              y: [0, -floatDistance/2, floatDistance/2, 0],
+              x: [0, pos.floatDistance/2, -pos.floatDistance/2, 0],
+              y: [0, -pos.floatDistance/2, pos.floatDistance/2, 0],
               rotate: pos.rotation
             }}
             transition={{
-              opacity: { duration: 0.8, delay: animationDelay * 0.2 },
-              scale: { duration: 0.8, delay: animationDelay * 0.2 },
-              // Ralentir légèrement les animations pour réduire les risques de chevauchement
-              x: { duration: animationDuration * 1.2, repeat: Infinity, ease: "easeInOut" },
-              y: { duration: animationDuration * 1.4, repeat: Infinity, ease: "easeInOut" },
-              rotate: { duration: 0.5, delay: animationDelay * 0.2 }
+              opacity: { duration: 0.7, delay: pos.animationDelay },
+              scale: { duration: 0.7, delay: pos.animationDelay },
+              x: { duration: pos.animationSpeed, repeat: Infinity, ease: "easeInOut" },
+              y: { duration: pos.animationSpeed * 1.2, repeat: Infinity, ease: "easeInOut" },
+              rotate: { duration: 0.4, delay: pos.animationDelay }
             }}
             style={{
               left: `${pos.x}%`,
               top: `${pos.y}%`,
               zIndex: 10 + index,
               maxWidth: getComponentMaxWidth(),
-              // Ajouter une marge pour réduire visuellement les chevauchements
-              padding: '8px'
+              padding: '4px',
+ 
             }}
           >
             {renderComponent(component, index)}
