@@ -22,7 +22,8 @@
     "openai": "^4.97.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.15.3"
+    "recharts": "^2.15.3",
+    "unsplash-js": "^7.0.19"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

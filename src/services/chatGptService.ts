@@ -17,6 +17,11 @@ type ChatGptRequestOptions = {
   systemPrompt?: string;
 };
 
+type Message = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
 // Configuration de l'API OpenAI (à configurer dans un .env en production)
 const OPENAI_API_KEY = process.env.NEXT_PUBLIC_CHATGPT_API_KEY || "";
 
@@ -47,8 +52,32 @@ Tu es un assistant spécialisé dans la génération de composants UI pédagogiq
 - Utilise des couleurs harmonieuses et contrastées.
 - Utilise une taille de texte base ou lg.
 
+3. Images (FloatingImage) :
+- Utilise SI BESOIN des images pour illustrer les concepts.
+- Utilise des images simples et claires.
+- Utilise des images qui sont facilement accessibles et lisibles.
+Utilisation: 
+{
+components: [
+  {
+    type: "FloatingCard",
+    props: {
+      color: "blue",
+      className: "w-full max-w-md mx-auto"
+    },
+    children: [
+      {
+        type: "FloatingImage",
+        props: {
+          searchQuery: "mathématiques",
+        }
+      }
+    ]
+  }
+]
+}
 Tu dois analyser la transcription vocale et générer une réponse JSON avec les composants à afficher.
-Demandes toi ce que l'utilisateur veut voir et comprendre.
+Demandes toi ce que l'utilisateur veut voir et comprendre et réponds en plusieurs groupe de components distinct.
 
 Tu dois retourner une réponse au format JSON avec la structure suivante:
 {
@@ -97,12 +126,13 @@ Tu dois retourner une réponse au format JSON avec la structure suivante:
 
 /**
  * Appelle l'API ChatGPT pour générer des composants UI basés sur une transcription vocale
+ * et utilise l'historique de conversation pour maintenir le contexte
  */
 export async function generateComponentsFromIntent(
   options: ChatGptRequestOptions
 ): Promise<ChatGptResponse> {
   const { transcript, context = {}, systemPrompt = DEFAULT_SYSTEM_PROMPT } = options;
-
+  
   try {
     // Enrichir le contexte avec les informations des composants pertinents
     const componentsContext = await enrichContextWithComponents(transcript);
@@ -110,22 +140,47 @@ export async function generateComponentsFromIntent(
       ...context,
       availableComponents: componentsContext
     };
-    // Préparer le message pour ChatGPT avec le contexte enrichi
-    const messages = [
-      {
-        role: "system",
-        content: `${systemPrompt}
+    
+    // Extraire l'historique de conversation s'il existe dans le contexte
+    const conversationHistory = enrichedContext.conversationHistory || [];
+    
+    // Préparer le message système pour ChatGPT avec le contexte enrichi
+    const systemMessage = {
+      role: "system",
+      content: `${systemPrompt}
 
       Contexte des composants disponibles:
-      ${JSON.stringify(enrichedContext.availableComponents, null, 2)}`,
-            },
-            {
-              role: "user",
-              content: `Transcription: "${transcript}"
-      ${context ? `Contexte additionnel: ${JSON.stringify(context)}` : ""}
-      Génère les composants UI appropriés basés sur cette transcription et le contexte fourni.`,
-      },
+      ${JSON.stringify(enrichedContext.availableComponents, null, 2)}`
+    };
+    
+    // Construire les messages à partir de l'historique de conversation
+    const historyMessages = conversationHistory.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }));
+    
+    // Ajouter le message utilisateur actuel
+    const userMessage = {
+      role: "user",
+      content: `Transcription: "${transcript}"
+      Génère les composants UI appropriés basés sur cette transcription et notre conversation précédente.`
+    };
+    
+    // Assembler tous les messages dans le bon ordre: système, historique, utilisateur actuel
+    const messages = [
+      systemMessage,
+      ...historyMessages,
+      userMessage
     ];
+    
+    // Limiter la taille de l'historique si nécessaire pour éviter de dépasser les limites de tokens
+    if (messages.length > 10) {
+      // Garder le message système, puis les messages les plus récents
+      const systemMsg = messages[0];
+      const recentMessages = messages.slice(-9); // Garder les 9 derniers messages
+      messages.length = 0; // Vider le tableau
+      messages.push(systemMsg, ...recentMessages); // Reconstruire avec système + récents
+    }
 
     // Appeler l'API ChatGPT avec la bibliothèque OpenAI
     const completion = await openai.chat.completions.create({

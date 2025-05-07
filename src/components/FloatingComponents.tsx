@@ -20,6 +20,13 @@ import {
 } from './FloatingCustomComponents';
 import { FloatingCustomAnimation, FloatingCustomSequence } from './FloatingCustomAnimation';
 import { FloatingCustomButton } from './FloatingCustomButton';
+import {
+  FloatingImage,
+  FloatingGallery,
+  FloatingImageCard,
+  FloatingAvatar,
+  FloatingImageSearch
+} from './FloatingImageComponents';
 
 // Palette of pastel backgrounds and text colors
 export const pastelBg = {
@@ -814,6 +821,10 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
       FloatingCustomContainer,
       FloatingCustomAnimation,
       FloatingCustomSequence,
+      //Composants Image
+      FloatingImage,
+      FloatingImageCard,
+      FloatingGallery,
       // Composant de jeu mathématique personnalisable
       CustomMathGame: require('./CustomMathGame').default,
       // Éléments HTML de base

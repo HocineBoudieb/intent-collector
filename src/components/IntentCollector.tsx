@@ -1,25 +1,62 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { generateComponentsFromIntent } from "@/services/chatGptService"
+
+type Message = {
+  role: "user" | "assistant" | "system"
+  content: string
+}
 
 type IntentCollectorProps = {
   onIntentResolved: (data: any) => void
   apiUrl?: string // Optionnel maintenant car on utilise ChatGPT par défaut
   systemPrompt?: string // Prompt personnalisé pour ChatGPT
   context?: Record<string, any> // Contexte supplémentaire pour RAG
+  memoryKey?: string // Clé pour stocker l'historique dans le localStorage
 }
 
-export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt, context = {} }: IntentCollectorProps) {
+export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt, context = {}, memoryKey = 'intent_collector_history' }: IntentCollectorProps) {
   const [inputText, setInputText] = useState('')
   const [showTooltip, setShowTooltip] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [conversationHistory, setConversationHistory] = useState<Message[]>([])
+
+  // Charger l'historique de conversation depuis le localStorage au démarrage
+  useEffect(() => {
+    try {
+      const savedHistory = localStorage.getItem(memoryKey)
+      if (savedHistory) {
+        setConversationHistory(JSON.parse(savedHistory))
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'historique:", error)
+    }
+  }, [memoryKey])
+
+  // Sauvegarder l'historique dans le localStorage à chaque mise à jour
+  useEffect(() => {
+    if (conversationHistory.length > 0) {
+      localStorage.setItem(memoryKey, JSON.stringify(conversationHistory))
+    }
+  }, [conversationHistory, memoryKey])
+
+  // Fonction pour effacer l'historique des conversations
+  const clearConversationHistory = () => {
+    setConversationHistory([])
+    localStorage.removeItem(memoryKey)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (inputText.trim()) {
       setIsProcessing(true)
       setShowTooltip(true)
+      
+      // Ajouter le message de l'utilisateur à l'historique
+      const userMessage: Message = { role: "user", content: inputText }
+      const updatedHistory = [...conversationHistory, userMessage]
+      setConversationHistory(updatedHistory)
       
       if (apiUrl) {
         // Utiliser l'ancienne méthode avec n8n si apiUrl est fourni
@@ -29,17 +66,38 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
           body: JSON.stringify({ transcript: inputText }),
         })
           .then(res => res.json())
-          .then(onIntentResolved)
+          .then(data => {
+            onIntentResolved(data)
+            // Comme nous n'avons pas accès au contenu exact de la réponse dans ce cas,
+            // nous ajoutons simplement un marqueur dans l'historique
+            const assistantMessage: Message = { 
+              role: "assistant", 
+              content: "Réponse générée via API externe" 
+            }
+            setConversationHistory([...updatedHistory, assistantMessage])
+          })
           .catch(err => console.error("Erreur API:", err))
           .finally(() => setIsProcessing(false))
       } else {
-        // Utiliser le service ChatGPT
+        // Utiliser le service ChatGPT avec l'historique de conversation
         generateComponentsFromIntent({
           transcript: inputText,
           systemPrompt,
-          context
+          context: {
+            ...context,
+            conversationHistory: updatedHistory
+          }
         })
-          .then(onIntentResolved)
+          .then(data => {
+            onIntentResolved(data)
+            // Ajouter la réponse à l'historique
+            // Nous utilisons une représentation simplifiée car la réponse complète est un objet complexe
+            const assistantMessage: Message = { 
+              role: "assistant", 
+              content: JSON.stringify(data)
+            }
+            setConversationHistory([...updatedHistory, assistantMessage])
+          })
           .catch(err => console.error("Erreur ChatGPT:", err))
           .finally(() => setIsProcessing(false))
       }
@@ -55,24 +113,36 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex items-center bg-white rounded-full shadow-lg overflow-hidden">
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          placeholder="Entrez votre intention..."
-          className="px-4 py-2 flex-grow focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={isProcessing}
-          className={`w-10 h-10 flex items-center justify-center transition-colors ${
-            isProcessing ? "bg-gray-400" : "bg-blue-600"
-          }`}
-        >
-          <span className="text-white text-xl">➤</span>
-        </button>
-      </form>
+      <div className="flex items-center space-x-2">
+        {conversationHistory.length > 0 && (
+          <button
+            onClick={clearConversationHistory}
+            className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors"
+            title="Effacer l'historique des conversations"
+          >
+            Effacer l'historique
+          </button>
+        )}
+        
+        <form onSubmit={handleSubmit} className="flex items-center bg-white rounded-full shadow-lg overflow-hidden">
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="Entrez votre intention..."
+            className="px-4 py-2 flex-grow focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={isProcessing}
+            className={`w-10 h-10 flex items-center justify-center transition-colors ${
+              isProcessing ? "bg-gray-400" : "bg-blue-600"
+            }`}
+          >
+            <span className="text-white text-xl">➤</span>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
