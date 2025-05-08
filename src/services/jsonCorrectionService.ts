@@ -39,7 +39,7 @@ export async function correctJsonWithChatGpt(
       messages: [
         {
           role: "system",
-          content: `Tu es un expert en correction de JSON. Ta tâche est de corriger le JSON fourni pour qu'il corresponde à la structure attendue, sans modifier le contenu sémantique. 
+          content: `Tu es un expert en correction de JSON. Ta tâche est de corriger le JSON fourni pour qu'il corresponde à la structure attendue, sans modifier le contenu sémantique. si le contenu est vide ou incomplet remplit avec cohérences avec le reste du contenu. 
           ${structureDescription}
           
           Retourne UNIQUEMENT le JSON corrigé, sans aucun texte explicatif avant ou après.`
@@ -52,7 +52,6 @@ export async function correctJsonWithChatGpt(
         }
       ],
       temperature: 0.3, // Température basse pour des réponses plus déterministes
-      max_tokens: 1000,
     });
 
     const correctedJsonString = completion.choices[0]?.message?.content;

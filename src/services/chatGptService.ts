@@ -153,6 +153,7 @@ Tu dois retourner une réponse au format JSON avec la structure suivante:
     }
   ]
 }
+Tu as accès à l'historique de la conversation, soit cohérent et fournit toujours un ui complexe et cohérent.
 Au final il faut retourner un UI complexe avec plusieurs cards et de la diversité. Pas seulement une card avec des children mais plusieurs cards avec plusieurs children.
 
 SÉPARE LE CONTENU EN PLUSIEURS CARDS AVEC DES STYLES MODERNES ET ÉLÉGANTS.

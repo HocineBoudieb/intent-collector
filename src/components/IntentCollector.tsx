@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { generateComponentsFromIntent } from "@/services/chatGptService"
-import { getUserState, generateWelcomePrompt } from "@/services/userStateService"
+import { getUserState, generateWelcomePrompt, saveUserState } from "@/services/userStateService"
 
 type Message = {
   role: "user" | "assistant" | "system"
@@ -90,6 +90,41 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
     localStorage.removeItem(memoryKey)
   }
 
+  // Fonction pour réinitialiser l'état utilisateur
+  const resetUserState = () => {
+    // État utilisateur initial par défaut
+    const DEFAULT_USER_STATE = {
+      profile: {
+        name: '',
+        age: null,
+        educationLevel: null,
+        mood: null,
+      },
+      preferences: {
+        contentType: 'mixte',
+        detailLevel: 'standard',
+        learningStyle: 'mixte',
+        examples: true,
+        quizzes: true,
+      },
+      topics: [],
+      stats: {
+        sessionsCount: 0,
+        lastSessionDate: null,
+        totalInteractions: 0,
+      },
+    }
+    
+    // Sauvegarder l'état par défaut
+    saveUserState(DEFAULT_USER_STATE)
+    
+    // Réinitialiser également l'historique des conversations
+    clearConversationHistory()
+    
+    // Réinitialiser l'état de la requête initiale
+    setInitialRequestSent(false)
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (inputText.trim()) {
@@ -149,7 +184,7 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-2">
+    <div className="flex flex-col items-center space-y-2">
       {showTooltip && inputText && isProcessing && (
         <div className="max-w-xs bg-white border border-gray-300 rounded-xl shadow p-3 text-sm text-gray-700">
           {inputText}
@@ -167,6 +202,14 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
             Effacer l'historique
           </button>
         )}
+        
+        <button
+          onClick={resetUserState}
+          className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors"
+          title="Réinitialiser l'état utilisateur"
+        >
+          Réinitialiser utilisateur
+        </button>
         
         <form onSubmit={handleSubmit} className="flex items-center bg-white rounded-full shadow-lg overflow-hidden">
           <input

@@ -27,22 +27,24 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen w-full bg-blue-200 relative p-8">
+    <main className="w-full bg-blue-200 relative p-8 min-h-[200vh]">
       {renderedComponent && (
         <div className="mb-10">
           {renderedComponent}
         </div>
       )}
 
-      <IntentCollector
-        onIntentResolved={handleIntent}
-        context={{
-          // Vous pouvez ajouter ici des informations contextuelles pour le RAG
-          // Par exemple: userPreferences, historique, etc.
-        }}
-        // Vous pouvez personnaliser le prompt système si nécessaire
-        // systemPrompt="Votre prompt personnalisé ici"
-      />
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <IntentCollector
+          onIntentResolved={handleIntent}
+          context={{
+            // Vous pouvez ajouter ici des informations contextuelles pour le RAG
+            // Par exemple: userPreferences, historique, etc.
+          }}
+          // Vous pouvez personnaliser le prompt système si nécessaire
+          // systemPrompt="Votre prompt personnalisé ici"
+        />
+      </div>
     </main>
   )
 }

@@ -978,7 +978,7 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
   };
 
   return (
-    <div className="relative w-full min-h-screen overflow-hidden p-4">
+    <div className="relative w-full min-h-[150vh] overflow-hidden p-4">
       {components.map((component, index) => {
         const pos = positions[index];
         
