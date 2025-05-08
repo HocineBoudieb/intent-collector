@@ -3,7 +3,7 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 import { ChromaClient } from 'chromadb';
 
 // Configuration
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY || "";
 const COLLECTION_NAME = 'components-docs';
 const CHROMA_URL = process.env.CHROMA_URL || 'http://localhost:8000';
 

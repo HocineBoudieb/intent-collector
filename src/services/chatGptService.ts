@@ -1,14 +1,17 @@
 "use client"
 
 // Service pour gérer les appels à l'API ChatGPT
-import OpenAI from 'openai';
+import { openai } from './openaiConfig';
 import { enrichContextWithComponents } from './ragService';
+import { validateAndFixJsonStructure } from './jsonValidationService';
+import { getUserState, updateUserState, initUserSession } from './userStateService';
 
 type ChatGptResponse = {
   components: Array<{
     type: string;
     props: Record<string, any>;
   }>;
+  userState?: Record<string, any>; // État utilisateur mis à jour par l'IA
 };
 
 type ChatGptRequestOptions = {
@@ -22,45 +25,58 @@ type Message = {
   content: string;
 };
 
-// Configuration de l'API OpenAI (à configurer dans un .env en production)
-const OPENAI_API_KEY = process.env.NEXT_PUBLIC_CHATGPT_API_KEY || "";
-
-// Initialisation du client OpenAI
-const openai = new OpenAI({
-  apiKey: OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Nécessaire pour l'utilisation côté client
-});
+// Note: L'instance OpenAI est maintenant importée depuis openaiConfig.ts
 
 
 // Prompt par défaut qui explique à ChatGPT comment générer les composants
 const DEFAULT_SYSTEM_PROMPT = `
-Tu es un assistant spécialisé dans la génération de composants UI pédagogiques et interactifs à partir d’une intention vocale.
+Tu es un assistant spécialisé dans la génération de composants UI pédagogiques et interactifs à partir d'une intention vocale.
 
-🎯 Objectif : Créer une **interface segmentée**, **structurée en plusieurs cartes**, et **visuellement attrayante**. Chaque segment doit contenir une idée, il doit y'avoir plusieurs segments. PAS UNE SEULE CARD MAIS PLUSIEURS CARDS
+Tu as également accès à un état utilisateur (userState) qui contient des informations sur le profil de l'utilisateur, ses préférences et son historique. Tu dois utiliser ces informations pour personnaliser ta réponse et mettre à jour cet état en fonction de la conversation.
+
+🎯 Objectif : Créer une **interface moderne**, **structurée en plusieurs cartes élégantes**, et **visuellement immersive**. Chaque segment doit contenir une idée, il doit y'avoir plusieurs segments. PAS UNE SEULE CARD MAIS PLUSIEURS CARDS.
 
 🧱 Structure attendue :
-1. **Carte d’introduction** (FloatingCard)
+1. **Carte d'introduction** (FloatingCard)
    - Utilise un FloatingTitle avec un ton engageant et un FloatingText pour introduire simplement le sujet.
+   - Ajoute des dégradés subtils avec "bg-gradient-to-br from-[couleur1] to-[couleur2]" dans className.
+   - Utilise des ombres douces avec "shadow-lg hover:shadow-xl transition-all duration-300".
+
 2. **Cartes de contenu** : une carte = un concept.
    - Présente les infos de manière visuelle et ludique (listes, équations animées, visualisations…).
    - Limite le texte par carte, et privilégie l'interaction ou la mise en forme.
+   - Utilise des effets de survol avec "hover:scale-[1.02] transition-transform".
+   - Ajoute des bordures arrondies avec "rounded-xl overflow-hidden".
+
 3. **Activité interactive (jeu ou quiz)** : toujours dans une **carte dédiée**.
-   - Utilise 'CustomMathGame' si tu veux créer un jeu interactif. 
+   - Utilise 'CustomMathGame' si tu veux créer un jeu interactif.
+   - Ajoute des animations subtiles avec "animate-pulse" ou "animate-bounce" pour les éléments interactifs.
+
 4. **Conclusion ou transition** : texte ou question pour conclure.
+   - Utilise un style distinct avec des accents visuels pour marquer la fin.
 
-2. Accessibilité et lisibilité :
-- Utilise des couleurs harmonieuses et contrastées.
-- Utilise une taille de texte base ou lg.
+🎨 Design moderne :
+- Utilise des dégradés subtils plutôt que des couleurs plates ("bg-gradient-to-br").
+- Ajoute des effets de profondeur avec des ombres ("shadow-md", "shadow-lg").
+- Utilise des transitions fluides ("transition-all duration-300").
+- Préfère des bordures arrondies ("rounded-xl", "rounded-2xl").
+- Incorpore des micro-interactions (effets au survol, animations subtiles).
 
-3. Images (FloatingImage) :
-- Utilise SI ça aide à la comprehension des images pour illustrer les concepts.
-- Utilise des images simples et claires.
-- Utilise des images qui sont facilement accessibles et lisibles.
+📱 Accessibilité et lisibilité :
+- Utilise des couleurs harmonieuses et contrastées (palettes modernes).
+- Utilise une taille de texte base ou lg avec un espacement adéquat ("leading-relaxed").
+- Ajoute des espacements généreux entre les éléments ("space-y-4", "gap-6").
+
+🖼️ Images (FloatingImage) :
+- Utilise SI ça aide à la compréhension des images pour illustrer les concepts.
+- Applique des effets modernes aux images ("rounded-lg overflow-hidden shadow-md").
+- Ajoute des transitions au survol ("hover:opacity-90 transition-opacity").
 Utilisation: 
       {
         type: "FloatingImage",
         props: {
           searchQuery: "mathématiques",
+          className: "rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
         }
       }
 Tu dois analyser la transcription vocale et générer une réponse JSON avec les composants à afficher.
@@ -68,19 +84,39 @@ Demandes toi ce que l'utilisateur veut voir et comprendre et réponds en plusieu
 
 Tu dois retourner une réponse au format JSON avec la structure suivante:
 {
+  "userState": {
+    "profile": {
+      "name": "string", // Nom de l'utilisateur (si mentionné)
+      "age": "number | null", // Âge de l'utilisateur (si mentionné)
+      "educationLevel": "primaire | collège | lycée | supérieur | null", // Niveau scolaire
+      "mood": "curieux | concentré | confus | enthousiaste | fatigué | null" // Humeur actuelle
+    },
+    "preferences": {
+      "contentType": "illustré | textuel | interactif | mixte", // Type de contenu préféré
+      "detailLevel": "simplifié | standard | détaillé", // Niveau de détail souhaité
+      "learningStyle": "visuel | auditif | kinesthésique | mixte", // Style d'apprentissage
+      "examples": "boolean", // Préférence pour les exemples
+      "quizzes": "boolean" // Préférence pour les quiz
+    },
+    "topics": ["string"], // Sujets abordés dans cette conversation
+    "stats": {
+      "totalInteractions": "number" // Nombre total d'interactions
+    }
+  },
   "components": [
     {
-      "type": "PREMIER GROUPE DE COMPONENT (CARD)",
+      "type": "FloatingCard",
       "props": {
         "color": "blue",
-        "className": "w-full max-w-md mx-auto"
+        "className": "w-full max-w-md mx-auto bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 mb-6"
       },
       "children": [
         {
           "type": "FloatingText",
           "props": {
-            "color": "green",
+            "color": "indigo",
             "size": "base",
+            "className": "leading-relaxed",
             "children": "Contenu du texte"
           }
         },
@@ -106,37 +142,47 @@ Tu dois retourner une réponse au format JSON avec la structure suivante:
             }
         }
       ]
-    }
-      {
-      "type": "deuxieme GROUPE DE COMPONENT (CARD)",
+    },
+    {
+      "type": "FloatingCard",
       "props": {
-        "color": "blue",
-        "className": "w-full max-w-md mx-auto"
+        "color": "purple",
+        "className": "w-full max-w-md mx-auto bg-gradient-to-br from-purple-50 to-pink-100 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] mb-6"
       },
-      "children": [....]
+      "children": [...]
     }
   ]
 }
 Au final il faut retourner un UI complexe avec plusieurs cards et de la diversité. Pas seulement une card avec des children mais plusieurs cards avec plusieurs children.
 
-SÉPARE LE CONTENU EN PLUSIEURS CARDS.
+SÉPARE LE CONTENU EN PLUSIEURS CARDS AVEC DES STYLES MODERNES ET ÉLÉGANTS.
 `;
 
 /**
  * Appelle l'API ChatGPT pour générer des composants UI basés sur une transcription vocale
  * et utilise l'historique de conversation pour maintenir le contexte
  */
+
 export async function generateComponentsFromIntent(
   options: ChatGptRequestOptions
 ): Promise<ChatGptResponse> {
   const { transcript, context = {}, systemPrompt = DEFAULT_SYSTEM_PROMPT } = options;
+  
+  // Récupérer l'état utilisateur actuel
+  const currentUserState = getUserState();
+  
+  // Initialiser une session si c'est une nouvelle visite
+  if (currentUserState.stats.sessionsCount === 0) {
+    initUserSession();
+  }
   
   try {
     // Enrichir le contexte avec les informations des composants pertinents
     const componentsContext = await enrichContextWithComponents(transcript);
     const enrichedContext = {
       ...context,
-      availableComponents: componentsContext
+      availableComponents: componentsContext,
+      userState: currentUserState // Ajouter l'état utilisateur au contexte
     };
     
     // Extraire l'historique de conversation s'il existe dans le contexte
@@ -148,7 +194,16 @@ export async function generateComponentsFromIntent(
       content: `${systemPrompt}
 
       Contexte des composants disponibles:
-      ${JSON.stringify(enrichedContext.availableComponents, null, 2)}`
+      ${JSON.stringify(enrichedContext.availableComponents, null, 2)}
+      
+      État utilisateur actuel:
+      ${JSON.stringify(enrichedContext.userState, null, 2)}
+      
+      Tu dois analyser cet état utilisateur et le mettre à jour en fonction de la conversation.
+      Si c'est une première interaction (sessionsCount <= 1), essaie de recueillir des informations sur l'utilisateur.
+      Adapte ton contenu en fonction des préférences de l'utilisateur (niveau de détail, style d'apprentissage, etc.).
+      Retourne l'état utilisateur mis à jour dans ta réponse JSON sous la clé "userState".
+      `
     };
     
     // Construire les messages à partir de l'historique de conversation
@@ -161,7 +216,8 @@ export async function generateComponentsFromIntent(
     const userMessage = {
       role: "user",
       content: `Transcription: "${transcript}"
-      Génère les composants UI appropriés basés sur cette transcription et notre conversation précédente.`
+      Génère les composants UI appropriés basés sur cette transcription et notre conversation précédente.
+      N'oublie pas d'analyser et de mettre à jour l'état utilisateur en fonction de cette interaction.`
     };
     
     // Assembler tous les messages dans le bon ordre: système, historique, utilisateur actuel
@@ -200,19 +256,50 @@ export async function generateComponentsFromIntent(
 
     console.log("Contenu de la réponse:", content);
 
-    // Extraire le JSON de la réponse (au cas où ChatGPT renvoie du texte avant/après le JSON)
-    const jsonMatch = content.match(/\{[\s\S]*\}/); 
-    if (!jsonMatch) {
-      console.error("Erreur: Impossible d'extraire le JSON de la réponse");
-      throw new Error("Impossible d'extraire le JSON de la réponse");
+    // Tenter d'extraire le JSON de la réponse
+    let jsonData;
+    
+    try {
+      // Essayer d'abord d'extraire avec regex
+      const jsonMatch = content.match(/\{[\s\S]*\}/); 
+      if (jsonMatch) {
+        console.log("JSON extrait:", jsonMatch[0]);
+        jsonData = JSON.parse(jsonMatch[0]);
+      } else {
+        // Si l'extraction échoue, essayer de parser directement le contenu
+        console.log("Tentative de parsing direct du contenu");
+        jsonData = JSON.parse(content);
+      }
+    } catch (parseError) {
+      console.error("Erreur lors du parsing JSON:", parseError);
+      
+      // Importer le service de correction JSON
+      const { correctJsonWithChatGpt } = await import('./jsonCorrectionService');
+      
+      // Utiliser ChatGPT pour corriger le JSON mal formaté
+      console.log("Tentative de correction du JSON avec ChatGPT");
+      return await correctJsonWithChatGpt({
+        jsonString: content,
+        expectedStructure: `La structure attendue est un objet avec une propriété 'components' qui est un tableau de composants UI.
+        Chaque composant doit avoir une propriété 'type' (chaîne) et une propriété 'props' (objet).
+        Les composants peuvent optionnellement avoir une propriété 'children' qui est un tableau d'autres composants.
+        L'objet peut aussi contenir une propriété optionnelle 'userState' qui est un objet contenant l'état utilisateur mis à jour.`
+      });
     }
 
-    console.log("JSON extrait:", jsonMatch[0]);
-
-    // Parser le JSON
-    const componentsData = JSON.parse(jsonMatch[0]) as ChatGptResponse;
-    console.log("Données des composants parsées:", componentsData);
-    return componentsData;
+    console.log("Données JSON parsées:", jsonData);
+    
+    // Valider et corriger la structure JSON avant de la retourner
+    const validatedData = validateAndFixJsonStructure(jsonData);
+    console.log("Données des composants validées et corrigées:", validatedData);
+    
+    // Mettre à jour l'état utilisateur si présent dans la réponse
+    if (validatedData.userState) {
+      updateUserState(validatedData.userState);
+      console.log("État utilisateur mis à jour:", validatedData.userState);
+    }
+    
+    return validatedData;
   } catch (error) {
     console.error("Erreur lors de la génération des composants:", error);
     // Retourner un message d'erreur sous forme de composant
@@ -222,7 +309,7 @@ export async function generateComponentsFromIntent(
           type: "FloatingCard",
           props: {
             color: "pink",
-            className: "w-full max-w-md mx-auto",
+            className: "w-full max-w-md mx-auto bg-gradient-to-br from-pink-50 to-red-100 rounded-xl shadow-lg p-6",
           },
           children: [
             {

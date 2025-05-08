@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { generateComponentsFromIntent } from "@/services/chatGptService"
+import { getUserState, generateWelcomePrompt } from "@/services/userStateService"
 
 type Message = {
   role: "user" | "assistant" | "system"
@@ -21,6 +22,7 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
   const [showTooltip, setShowTooltip] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [conversationHistory, setConversationHistory] = useState<Message[]>([])
+  const [initialRequestSent, setInitialRequestSent] = useState(false)
 
   // Charger l'historique de conversation depuis le localStorage au démarrage
   useEffect(() => {
@@ -33,13 +35,54 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
       console.error("Erreur lors du chargement de l'historique:", error)
     }
   }, [memoryKey])
+  
+  // Envoyer une requête initiale automatique si c'est la première visite
+  useEffect(() => {
+    if (!initialRequestSent) {
+      const userState = getUserState()
+      const welcomePrompt = generateWelcomePrompt(userState)
+      
+      // Simuler une requête utilisateur avec le message de bienvenue
+      if (userState.stats.sessionsCount <= 1) {
+        setIsProcessing(true)
+        setInitialRequestSent(true)
+        
+        // Ajouter le message système à l'historique
+        const systemMessage: Message = { role: "system", content: welcomePrompt }
+        const updatedHistory = [...conversationHistory, systemMessage]
+        setConversationHistory(updatedHistory)
+        
+        // Générer une réponse initiale
+        generateComponentsFromIntent({
+          transcript: welcomePrompt,
+          systemPrompt,
+          context: {
+            ...context,
+            conversationHistory: updatedHistory,
+            isInitialRequest: true
+          }
+        })
+          .then(data => {
+            onIntentResolved(data)
+            // Ajouter la réponse à l'historique
+            const assistantMessage: Message = { 
+              role: "assistant", 
+              content: JSON.stringify(data)
+            }
+            setConversationHistory(prevHistory => [...prevHistory, assistantMessage])
+          })
+          .catch(err => console.error("Erreur lors de la requête initiale:", err))
+          .finally(() => setIsProcessing(false))
+      }
+    }
+  }, [initialRequestSent, conversationHistory.length, context, onIntentResolved, systemPrompt, memoryKey])
 
   // Sauvegarder l'historique dans le localStorage à chaque mise à jour
   useEffect(() => {
     if (conversationHistory.length > 0) {
       localStorage.setItem(memoryKey, JSON.stringify(conversationHistory))
     }
-  }, [conversationHistory, memoryKey])
+  }, [conversationHistory.length, memoryKey])
 
   // Fonction pour effacer l'historique des conversations
   const clearConversationHistory = () => {
@@ -74,7 +117,7 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
               role: "assistant", 
               content: "Réponse générée via API externe" 
             }
-            setConversationHistory([...updatedHistory, assistantMessage])
+            setConversationHistory(prevHistory => [...prevHistory, assistantMessage])
           })
           .catch(err => console.error("Erreur API:", err))
           .finally(() => setIsProcessing(false))
@@ -85,7 +128,8 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
           systemPrompt,
           context: {
             ...context,
-            conversationHistory: updatedHistory
+            conversationHistory: updatedHistory,
+            isInitialRequest: false
           }
         })
           .then(data => {
