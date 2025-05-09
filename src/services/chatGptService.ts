@@ -32,7 +32,24 @@ type Message = {
 const DEFAULT_SYSTEM_PROMPT = `
 Tu es un assistant spécialisé dans la génération de composants UI pédagogiques et interactifs à partir d'une intention vocale.
 
-Tu as également accès à un état utilisateur (userState) qui contient des informations sur le profil de l'utilisateur, ses préférences et son historique. Tu dois utiliser ces informations pour personnaliser ta réponse et mettre à jour cet état en fonction de la conversation.
+Tu as également accès à un état utilisateur (userState) qui contient des informations sur le profil de l'utilisateur, ses préférences, son historique et son parcours d'apprentissage. Tu dois utiliser ces informations pour personnaliser ta réponse et mettre à jour cet état en fonction de la conversation.
+
+🧠 Gestion du parcours d'apprentissage :
+Tu dois créer et gérer un parcours d'apprentissage cohérent pour l'utilisateur. Ce parcours est structuré comme suit :
+- Un sujet principal (topic)
+- Une série d'étapes progressives (steps)
+- Un index indiquant l'étape actuelle (currentStepIndex)
+
+Lors des premières interactions :
+1. Identifie les centres d'intérêt et le niveau de l'utilisateur
+2. Propose un parcours d'apprentissage adapté avec 3 à 7 étapes progressives
+3. Définis chaque étape avec un titre, une description, des objectifs et une difficulté
+
+Lors des interactions suivantes :
+1. Vérifie où en est l'utilisateur dans son parcours
+2. Présente le contenu correspondant à l'étape actuelle
+3. Avance l'index (currentStepIndex) lorsqu'une étape est complétée
+4. Adapte le parcours si nécessaire en fonction des nouvelles informations
 
 🎯 Objectif : Créer une **interface moderne**, **structurée en plusieurs cartes élégantes**, et **visuellement immersive**. Chaque segment doit contenir une idée, il doit y'avoir plusieurs segments. PAS UNE SEULE CARD MAIS PLUSIEURS CARDS.
 
@@ -97,6 +114,22 @@ Tu dois retourner une réponse au format JSON avec la structure suivante:
       "learningStyle": "visuel | auditif | kinesthésique | mixte", // Style d'apprentissage
       "examples": "boolean", // Préférence pour les exemples
       "quizzes": "boolean" // Préférence pour les quiz
+    },
+    "learningPath": {
+      "defined": "boolean", // Si un parcours a été défini
+      "currentStepIndex": "number", // Index de l'étape actuelle (commence à 0)
+      "topic": "string", // Sujet principal du parcours
+      "steps": [ // Étapes du parcours d'apprentissage
+        {
+          "title": "string", // Titre de l'étape
+          "description": "string", // Description détaillée
+          "objectives": ["string"], // Objectifs d'apprentissage
+          "difficulty": "débutant | intermédiaire | avancé", // Niveau de difficulté
+          "estimatedDuration": "number", // Durée estimée en minutes
+          "completed": "boolean", // Si l'étape a été complétée
+          "resources": ["string"] // Ressources supplémentaires (optionnel)
+        }
+      ]
     },
     "topics": ["string"], // Sujets abordés dans cette conversation
     "stats": {
@@ -203,6 +236,20 @@ export async function generateComponentsFromIntent(
       Tu dois analyser cet état utilisateur et le mettre à jour en fonction de la conversation.
       Si c'est une première interaction (sessionsCount <= 1), essaie de recueillir des informations sur l'utilisateur.
       Adapte ton contenu en fonction des préférences de l'utilisateur (niveau de détail, style d'apprentissage, etc.).
+      
+      Instructions pour le parcours d'apprentissage :
+      1. Si le parcours n'est pas encore défini (learningPath.defined = false) :
+         - Identifie les centres d'intérêt de l'utilisateur
+         - Crée un parcours d'apprentissage adapté avec 3 à 7 étapes progressives
+         - Définis chaque étape avec un titre, une description, des objectifs et une difficulté
+         - Mets à jour learningPath.defined = true et learningPath.currentStepIndex = 0
+      
+      2. Si le parcours est déjà défini (learningPath.defined = true) :
+         - Présente le contenu correspondant à l'étape actuelle (learningPath.steps[currentStepIndex])
+         - Si l'utilisateur a terminé l'étape actuelle, mets à jour learningPath.steps[currentStepIndex].completed = true
+           et incrémente learningPath.currentStepIndex
+         - Adapte le parcours si nécessaire en fonction des nouvelles informations ou demandes de l'utilisateur
+      
       Retourne l'état utilisateur mis à jour dans ta réponse JSON sous la clé "userState".
       `
     };
@@ -218,7 +265,14 @@ export async function generateComponentsFromIntent(
       role: "user",
       content: `Transcription: "${transcript}"
       Génère les composants UI appropriés basés sur cette transcription et notre conversation précédente.
-      N'oublie pas d'analyser et de mettre à jour l'état utilisateur en fonction de cette interaction.`
+      
+      N'oublie pas d'analyser et de mettre à jour l'état utilisateur en fonction de cette interaction.
+      
+      Pour le parcours d'apprentissage :
+      - Si c'est une première interaction, identifie les centres d'intérêt et crée un parcours adapté
+      - Si un parcours existe déjà, présente le contenu de l'étape actuelle et avance si nécessaire
+      - Assure-toi que chaque étape du parcours est cohérente avec les précédentes
+      - Adapte le niveau de difficulté en fonction des réponses de l'utilisateur`
     };
     
     // Assembler tous les messages dans le bon ordre: système, historique, utilisateur actuel

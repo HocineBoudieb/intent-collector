@@ -2,6 +2,16 @@
 
 // Service pour gérer l'état utilisateur et ses préférences
 
+export type LearningPathStep = {
+  title: string;          // Titre de l'étape
+  description: string;    // Description détaillée
+  objectives: string[];   // Objectifs d'apprentissage
+  difficulty: 'débutant' | 'intermédiaire' | 'avancé'; // Niveau de difficulté
+  estimatedDuration: number; // Durée estimée en minutes
+  completed: boolean;     // Si l'étape a été complétée
+  resources?: string[];   // Ressources supplémentaires (optionnel)
+};
+
 export type UserState = {
   // Informations de profil
   profile: {
@@ -17,6 +27,13 @@ export type UserState = {
     learningStyle: 'visuel' | 'auditif' | 'kinesthésique' | 'mixte';
     examples: boolean;
     quizzes: boolean;
+  };
+  // Parcours d'apprentissage
+  learningPath: {
+    defined: boolean;       // Si le parcours a été défini
+    currentStepIndex: number; // Index de l'étape actuelle
+    topic: string;         // Sujet principal du parcours
+    steps: LearningPathStep[]; // Étapes du parcours
   };
   // Historique des sujets abordés
   topics: string[];
@@ -42,6 +59,12 @@ const DEFAULT_USER_STATE: UserState = {
     learningStyle: 'mixte',
     examples: true,
     quizzes: true,
+  },
+  learningPath: {
+    defined: false,
+    currentStepIndex: 0,
+    topic: '',
+    steps: [],
   },
   topics: [],
   stats: {
@@ -106,6 +129,12 @@ export function updateUserState(updates: Partial<UserState>): UserState {
       ...currentState.preferences,
       ...(updates.preferences || {}),
     },
+    learningPath: {
+      ...currentState.learningPath,
+      ...(updates.learningPath || {}),
+      // Fusion spéciale pour les étapes du parcours
+      steps: updates.learningPath?.steps || currentState.learningPath.steps,
+    },
     stats: {
       ...currentState.stats,
       ...(updates.stats || {}),
@@ -138,15 +167,97 @@ export function initUserSession(): UserState {
 }
 
 /**
+ * Crée un nouveau parcours d'apprentissage
+ */
+export function createLearningPath(topic: string, steps: LearningPathStep[]): UserState {
+  const currentState = getUserState();
+  
+  const newState = {
+    ...currentState,
+    learningPath: {
+      defined: true,
+      currentStepIndex: 0,
+      topic,
+      steps,
+    },
+  };
+  
+  saveUserState(newState);
+  return newState;
+}
+
+/**
+ * Avance à l'étape suivante du parcours d'apprentissage
+ */
+export function advanceToNextStep(): UserState {
+  const currentState = getUserState();
+  
+  // Vérifier si un parcours est défini
+  if (!currentState.learningPath || !currentState.learningPath.defined || currentState.learningPath.steps.length === 0) {
+    return currentState;
+  }
+  
+  // Marquer l'étape actuelle comme complétée
+  const updatedSteps = [...currentState.learningPath.steps];
+  const currentIndex = currentState.learningPath.currentStepIndex;
+  
+  if (currentIndex < updatedSteps.length) {
+    updatedSteps[currentIndex] = {
+      ...updatedSteps[currentIndex],
+      completed: true,
+    };
+  }
+  
+  // Calculer le nouvel index (en s'assurant qu'il ne dépasse pas la longueur du tableau)
+  const newIndex = Math.min(currentIndex + 1, updatedSteps.length - 1);
+  
+  const newState = {
+    ...currentState,
+    learningPath: {
+      ...currentState.learningPath,
+      currentStepIndex: newIndex,
+      steps: updatedSteps,
+    },
+  };
+  
+  saveUserState(newState);
+  return newState;
+}
+
+/**
+ * Réinitialise le parcours d'apprentissage
+ */
+export function resetLearningPath(): UserState {
+  const currentState = getUserState();
+  
+  const newState = {
+    ...currentState,
+    learningPath: {
+      defined: false,
+      currentStepIndex: 0,
+      topic: '',
+      steps: [],
+    },
+  };
+  
+  saveUserState(newState);
+  return newState;
+}
+
+/**
  * Génère un message de bienvenue initial basé sur l'état utilisateur
  */
 export function generateWelcomePrompt(userState: UserState): string {
   const isReturningUser = userState.stats.sessionsCount > 1;
   const userName = userState.profile.name || 'utilisateur';
+  const hasLearningPath = userState.learningPath && userState.learningPath.defined;
   
-  if (isReturningUser) {
-    return `Bonjour ${userName} ! Ravi de vous revoir. Comment puis-je vous aider aujourd'hui ?`;
+  if (isReturningUser && hasLearningPath) {
+    const currentStep = userState.learningPath.steps[userState.learningPath.currentStepIndex];
+    return `Bonjour ${userName} ! Ravi de vous revoir. Nous en étions à l'étape "${currentStep?.title || 'de votre parcours'}" sur le sujet ${userState.learningPath.topic}. Souhaitez-vous continuer ou explorer un nouveau sujet ?`;
+  } else if (isReturningUser) {
+    return `Bonjour ${userName} ! Ravi de vous revoir. Souhaitez-vous que je vous propose un parcours d'apprentissage personnalisé aujourd'hui ?`;
   } else {
-    return `Bonjour ! Je suis votre assistant d'apprentissage. Pour mieux vous aider, pourriez-vous me dire votre prénom et votre niveau scolaire ?`;
+    return `Bonjour ! Je suis votre assistant d'apprentissage. Pour mieux vous aider, pourriez-vous me dire votre prénom, votre niveau scolaire et les sujets qui vous intéressent ? Je pourrai ainsi créer un parcours d'apprentissage adapté à vos besoins.`;
   }
 }

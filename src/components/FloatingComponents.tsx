@@ -27,6 +27,7 @@ import {
   FloatingAvatar,
   FloatingImageSearch
 } from './FloatingImageComponents';
+import { LearningPathStep } from '@/services/userStateService';
 
 // Palette of pastel backgrounds and text colors
 export const pastelBg = {
@@ -491,6 +492,373 @@ export const FloatingPolynomial: FC<{
   );
 };
 
+// Composant FloatingLearningPathProgress - Indicateur de progression du parcours d'apprentissage
+export const FloatingLearningPathProgress: FC<{
+  currentStepIndex: number;
+  totalSteps: number;
+  color?: keyof typeof pastelBg;
+  className?: string;
+}> = ({ currentStepIndex, totalSteps, color = 'blue', className = '' }) => {
+  // Calculer le pourcentage de progression
+  const progressPercentage = Math.round((currentStepIndex / (totalSteps - 1)) * 100);
+  
+  return (
+    <motion.div 
+      className={`w-full ${className}`}
+      animate={{ y: [-2, 2, -2] }}
+      transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-sm font-medium ${pastelText[color]}`}>Progression</span>
+        <span className={`text-sm font-medium ${pastelText[color]}`}>{progressPercentage}%</span>
+      </div>
+      
+      <div className="w-full bg-gray-200 rounded-full h-2.5">
+        <motion.div 
+          className={`h-2.5 rounded-full ${pastelBg[color]}`}
+          style={{ width: `${progressPercentage}%` }}
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercentage}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
+      </div>
+      
+      <div className="flex justify-between mt-1">
+        {Array.from({ length: totalSteps }).map((_, index) => (
+          <motion.div 
+            key={index}
+            className={`w-4 h-4 rounded-full flex items-center justify-center ${index <= currentStepIndex ? pastelBg[color] : 'bg-gray-200'}`}
+            whileHover={{ scale: 1.2 }}
+            animate={index === currentStepIndex ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <span className="text-xs text-white font-bold">{index + 1}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+// Composant FloatingLearningPathStep - Carte d'étape du parcours d'apprentissage
+export const FloatingLearningPathStep: FC<{
+  step: LearningPathStep;
+  isCurrent: boolean;
+  color?: keyof typeof pastelBg;
+  className?: string;
+}> = ({ step, isCurrent, color = 'blue', className = '' }) => {
+  return (
+    <motion.div
+      className={`rounded-xl shadow-lg p-4 ${isCurrent ? `${pastelBg[color]} border-2 border-${color}-300` : 'bg-white'} ${className}`}
+      animate={isCurrent ? { y: [-3, 3, -3], scale: [1, 1.02, 1] } : { y: [-2, 2, -2] }}
+      transition={{ duration: 4, ease: 'easeInOut', repeat: Infinity }}
+      whileHover={{ scale: 1.03 }}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <h3 className={`text-lg font-bold ${pastelText[color]}`}>{step.title}</h3>
+        <div className={`px-2 py-1 rounded-full text-xs font-medium ${step.completed ? 'bg-green-100 text-green-800' : isCurrent ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+          {step.completed ? 'Complété' : isCurrent ? 'En cours' : 'À venir'}
+        </div>
+      </div>
+      
+      <p className="text-sm text-gray-600 mb-3">{step.description}</p>
+      
+      <div className="mb-3">
+        <div className="text-xs font-medium text-gray-500 mb-1">Objectifs:</div>
+        <ul className="list-disc pl-5 text-sm text-gray-600">
+          {step.objectives.map((objective, index) => (
+            <li key={index}>{objective}</li>
+          ))}
+        </ul>
+      </div>
+      
+      <div className="flex justify-between items-center text-xs text-gray-500">
+        <div className="flex items-center">
+          <span className={`inline-block w-2 h-2 rounded-full mr-1 ${step.difficulty === 'débutant' ? 'bg-green-400' : step.difficulty === 'intermédiaire' ? 'bg-yellow-400' : 'bg-red-400'}`}></span>
+          <span>{step.difficulty}</span>
+        </div>
+        <div>{step.estimatedDuration} min</div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Composant FloatingLearningPathNavigation - Boutons de navigation entre les étapes
+export const FloatingLearningPathNavigation: FC<{
+  currentStepIndex: number;
+  totalSteps: number;
+  onPrevious: () => void;
+  onNext: () => void;
+  color?: keyof typeof pastelBg;
+  className?: string;
+}> = ({ currentStepIndex, totalSteps, onPrevious, onNext, color = 'blue', className = '' }) => {
+  return (
+    <motion.div
+      className={`flex justify-between items-center ${className}`}
+      animate={{ y: [-2, 2, -2] }}
+      transition={{ duration: 3, ease: 'easeInOut', repeat: Infinity }}
+    >
+      <motion.button
+        onClick={onPrevious}
+        disabled={currentStepIndex === 0}
+        className={`px-4 py-2 rounded-lg font-medium ${currentStepIndex === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : `${pastelBg[color]} ${pastelText[color]}`}`}
+        whileHover={currentStepIndex > 0 ? { scale: 1.05 } : {}}
+        whileTap={currentStepIndex > 0 ? { scale: 0.95 } : {}}
+      >
+        ← Précédent
+      </motion.button>
+      
+      <div className={`text-sm font-medium ${pastelText[color]}`}>
+        Étape {currentStepIndex + 1} sur {totalSteps}
+      </div>
+      
+      <motion.button
+        onClick={onNext}
+        disabled={currentStepIndex === totalSteps - 1}
+        className={`px-4 py-2 rounded-lg font-medium ${currentStepIndex === totalSteps - 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : `${pastelBg[color]} ${pastelText[color]}`}`}
+        whileHover={currentStepIndex < totalSteps - 1 ? { scale: 1.05 } : {}}
+        whileTap={currentStepIndex < totalSteps - 1 ? { scale: 0.95 } : {}}
+      >
+        Suivant →
+      </motion.button>
+    </motion.div>
+  );
+};
+
+// Composant FloatingLearningPathSummary - Résumé du parcours d'apprentissage
+export const FloatingLearningPathSummary: FC<{
+  topic: string;
+  steps: LearningPathStep[];
+  currentStepIndex: number;
+  color?: keyof typeof pastelBg;
+  className?: string;
+}> = ({ topic, steps, currentStepIndex, color = 'blue', className = '' }) => {
+  return (
+    <motion.div
+      className={`rounded-xl shadow-lg p-5 bg-gradient-to-br from-${color}-50 to-${color}-100 ${className}`}
+      animate={{ y: [-3, 3, -3] }}
+      transition={{ duration: 4, ease: 'easeInOut', repeat: Infinity }}
+    >
+      <h2 className={`text-xl font-bold ${pastelText[color]} mb-3`}>Parcours d'apprentissage: {topic}</h2>
+      
+      <FloatingLearningPathProgress 
+        currentStepIndex={currentStepIndex} 
+        totalSteps={steps.length} 
+        color={color} 
+        className="mb-4"
+      />
+      
+      <div className="space-y-2 mb-4">
+        {steps.map((step, index) => (
+          <div 
+            key={index} 
+            className={`flex items-center p-2 rounded-lg ${index === currentStepIndex ? `${pastelBg[color]} bg-opacity-70` : 'bg-white'}`}
+          >
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 ${step.completed ? 'bg-green-400 text-white' : index === currentStepIndex ? `${pastelBg[color]} border border-${color}-400` : 'bg-gray-200'}`}>
+              {step.completed ? '✓' : index + 1}
+            </div>
+            <div className="flex-1">
+              <div className={`text-sm font-medium ${index === currentStepIndex ? pastelText[color] : 'text-gray-700'}`}>{step.title}</div>
+              <div className="text-xs text-gray-500">{step.difficulty} · {step.estimatedDuration} min</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="text-sm text-gray-600">
+        <div className="font-medium mb-1">Prochaine étape:</div>
+        <div>{currentStepIndex < steps.length - 1 ? steps[currentStepIndex + 1].title : 'Parcours terminé!'}</div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Composant FloatingLearningPathQuiz - Quiz interactif pour le parcours d'apprentissage
+export const FloatingLearningPathQuiz: FC<{
+  questions: Array<{
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    explanation?: string;
+  }>;
+  onComplete?: (score: number, total: number) => void;
+  color?: keyof typeof pastelBg;
+  className?: string;
+}> = ({ questions, onComplete, color = 'blue', className = '' }) => {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
+  const [selectedAnswer, setSelectedAnswer] = React.useState<string | null>(null);
+  const [isAnswerChecked, setIsAnswerChecked] = React.useState(false);
+  const [score, setScore] = React.useState(0);
+  const [quizCompleted, setQuizCompleted] = React.useState(false);
+  
+  const currentQuestion = questions[currentQuestionIndex];
+  
+  const checkAnswer = () => {
+    if (!selectedAnswer) return;
+    
+    setIsAnswerChecked(true);
+    
+    if (selectedAnswer === currentQuestion.correctAnswer) {
+      setScore(prev => prev + 1);
+    }
+  };
+  
+  const nextQuestion = () => {
+    setSelectedAnswer(null);
+    setIsAnswerChecked(false);
+    
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      setQuizCompleted(true);
+      if (onComplete) {
+        onComplete(score, questions.length);
+      }
+    }
+  };
+  
+  const resetQuiz = () => {
+    setCurrentQuestionIndex(0);
+    setSelectedAnswer(null);
+    setIsAnswerChecked(false);
+    setScore(0);
+    setQuizCompleted(false);
+  };
+  
+  return (
+    <motion.div
+      className={`rounded-xl shadow-lg p-5 ${pastelBg[color]} ${className}`}
+      animate={{ y: [-3, 3, -3] }}
+      transition={{ duration: 4, ease: 'easeInOut', repeat: Infinity }}
+    >
+      {!quizCompleted ? (
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className={`text-lg font-bold ${pastelText[color]}`}>Quiz</h3>
+            <div className="text-sm font-medium">
+              Question {currentQuestionIndex + 1}/{questions.length}
+            </div>
+          </div>
+          
+          <div className="mb-5">
+            <p className="text-base font-medium mb-3">{currentQuestion.question}</p>
+            
+            <div className="space-y-2">
+              {currentQuestion.options.map((option, index) => (
+                <motion.div
+                  key={index}
+                  className={`p-3 rounded-lg cursor-pointer border ${selectedAnswer === option 
+                    ? isAnswerChecked 
+                      ? option === currentQuestion.correctAnswer 
+                        ? 'bg-green-100 border-green-400' 
+                        : 'bg-red-100 border-red-400'
+                      : `${pastelBg[color]} border-${color}-400`
+                    : 'bg-white border-gray-200'}`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => !isAnswerChecked && setSelectedAnswer(option)}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 ${selectedAnswer === option ? `border-${color}-500` : 'border-gray-300'}`}>
+                      {selectedAnswer === option && (
+                        <motion.div 
+                          className={`w-3 h-3 rounded-full ${pastelBg[color]}`}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      )}
+                    </div>
+                    <div className="text-sm">{option}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+          
+          {isAnswerChecked && currentQuestion.explanation && (
+            <motion.div 
+              className="mb-4 p-3 bg-white rounded-lg border border-gray-200"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="text-sm font-medium mb-1">Explication:</div>
+              <div className="text-sm text-gray-600">{currentQuestion.explanation}</div>
+            </motion.div>
+          )}
+          
+          <div className="flex justify-end">
+            {!isAnswerChecked ? (
+              <motion.button
+                onClick={checkAnswer}
+                disabled={!selectedAnswer}
+                className={`px-4 py-2 rounded-lg font-medium ${!selectedAnswer ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : `${pastelBg[color]} ${pastelText[color]}`}`}
+                whileHover={selectedAnswer ? { scale: 1.05 } : {}}
+                whileTap={selectedAnswer ? { scale: 0.95 } : {}}
+              >
+                Vérifier
+              </motion.button>
+            ) : (
+              <motion.button
+                onClick={nextQuestion}
+                className={`px-4 py-2 rounded-lg font-medium ${pastelBg[color]} ${pastelText[color]}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {currentQuestionIndex < questions.length - 1 ? 'Question suivante' : 'Terminer le quiz'}
+              </motion.button>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="text-center">
+          <motion.div 
+            className="text-2xl font-bold mb-3"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            {score === questions.length 
+              ? '🎉 Parfait !' 
+              : score >= questions.length / 2 
+                ? '👍 Bien joué !' 
+                : '🤔 Continuez à apprendre'}
+          </motion.div>
+          
+          <p className={`text-lg font-medium ${pastelText[color]} mb-5`}>
+            Votre score: {score}/{questions.length}
+          </p>
+          
+          <motion.div 
+            className="w-full h-4 bg-gray-200 rounded-full mb-6"
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.div 
+              className={`h-4 rounded-full ${pastelBg[color]}`}
+              style={{ width: `${(score / questions.length) * 100}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${(score / questions.length) * 100}%` }}
+              transition={{ duration: 1, delay: 0.3 }}
+            />
+          </motion.div>
+          
+          <motion.button
+            onClick={resetQuiz}
+            className={`px-4 py-2 rounded-lg font-medium ${pastelBg[color]} ${pastelText[color]}`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Recommencer le quiz
+          </motion.button>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
 // Composant FloatingGeometry - Formes géométriques animées
 export const FloatingGeometry: FC<{
   shape: 'triangle' | 'square' | 'circle' | 'rectangle';
@@ -814,6 +1182,11 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
       FloatingGeometry,
       FloatingCoordinateSystem,
       FloatingEquationSolver,
+      // Composants du parcours d'apprentissage
+      FloatingLearningPathStep,
+      FloatingLearningPathProgress,
+      FloatingLearningPathNavigation,
+      LearningPath: 'div', // Conteneur pour les données JSON du parcours d'apprentissage
       // Composants personnalisables
       FloatingCustomCard,
       FloatingCustomButton,
@@ -863,6 +1236,15 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
       } else if (type === 'FloatingList') {
         // FloatingList a besoin de 'items' au lieu de 'children'
         // Ne rien faire car 'items' devrait déjà être dans les props
+      } else if (type === 'FloatingLearningPathStep') {
+        // FloatingLearningPathStep a besoin de 'step' et 'isCurrent' au lieu de 'children'
+        // Ne rien faire car ces props devraient déjà être dans les props
+      } else if (type === 'FloatingLearningPathProgress') {
+        // FloatingLearningPathProgress a besoin de 'currentStepIndex' et 'totalSteps'
+        // Ne rien faire car ces props devraient déjà être dans les props
+      } else if (type === 'FloatingLearningPathNavigation') {
+        // FloatingLearningPathNavigation a besoin de 'currentStepIndex', 'totalSteps', 'onPrevious' et 'onNext'
+        // Ne rien faire car ces props devraient déjà être dans les props
       } else {
         // Pour les autres composants, ajouter les enfants rendus
         finalProps.children = renderedChildren;
@@ -873,6 +1255,50 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
     return React.createElement(Component, finalProps);
   };
 
+  // Fonction pour parser les données JSON du parcours d'apprentissage
+  const parseLearningPathData = (jsonData: string): {
+    currentStepIndex: number;
+    totalSteps: number;
+    steps: LearningPathStep[];
+  } => {
+    try {
+      const data = JSON.parse(jsonData);
+      
+      // Vérifier que les données contiennent les informations nécessaires
+      if (!data.steps || !Array.isArray(data.steps)) {
+        throw new Error('Les données du parcours d\'apprentissage doivent contenir un tableau d\'étapes');
+      }
+      
+      // Transformer les données en objets LearningPathStep
+      const steps: LearningPathStep[] = data.steps.map((step: any) => ({
+        title: step.title || 'Étape sans titre',
+        description: step.description || 'Aucune description disponible',
+        objectives: Array.isArray(step.objectives) ? step.objectives : [],
+        difficulty: step.difficulty || 'débutant',
+        estimatedDuration: step.estimatedDuration || 30,
+        completed: !!step.completed,
+        resources: Array.isArray(step.resources) ? step.resources : []
+      }));
+      
+      // Récupérer l'index de l'étape actuelle
+      const currentStepIndex = typeof data.currentStepIndex === 'number' ? 
+        Math.min(Math.max(0, data.currentStepIndex), steps.length - 1) : 0;
+      
+      return {
+        currentStepIndex,
+        totalSteps: steps.length,
+        steps
+      };
+    } catch (error) {
+      console.error('Erreur lors du parsing des données du parcours d\'apprentissage:', error);
+      return {
+        currentStepIndex: 0,
+        totalSteps: 0,
+        steps: []
+      };
+    }
+  };
+  
   // Hook pour détecter la taille de l'écran
   const [windowSize, setWindowSize] = React.useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
@@ -967,6 +1393,56 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
     });
   };
 
+  // Fonction pour créer des composants de parcours d'apprentissage à partir des données JSON
+  const createLearningPathComponents = (jsonData: string): ComponentData[] => {
+    const { currentStepIndex, totalSteps, steps } = parseLearningPathData(jsonData);
+    
+    if (steps.length === 0) {
+      return [];
+    }
+    
+    const components: ComponentData[] = [];
+    
+    // Ajouter l'indicateur de progression
+    components.push({
+      type: 'FloatingLearningPathProgress',
+      props: {
+        currentStepIndex,
+        totalSteps,
+        color: 'blue',
+        className: 'mb-6 w-full'
+      }
+    });
+    
+    // Ajouter l'étape actuelle
+    if (steps[currentStepIndex]) {
+      components.push({
+        type: 'FloatingLearningPathStep',
+        props: {
+          step: steps[currentStepIndex],
+          isCurrent: true,
+          color: 'blue',
+          className: 'mb-6'
+        }
+      });
+    }
+    
+    // Ajouter les boutons de navigation
+    components.push({
+      type: 'FloatingLearningPathNavigation',
+      props: {
+        currentStepIndex,
+        totalSteps,
+        onPrevious: () => console.log('Navigation vers l\'étape précédente'),
+        onNext: () => console.log('Navigation vers l\'étape suivante'),
+        color: 'blue',
+        className: 'mt-4'
+      }
+    });
+    
+    return components;
+  };
+  
   // Calculer les positions en grille
   const positions = calculateGridPositions();
 
@@ -977,9 +1453,41 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
     return `${cellWidth * 0.9}%`; // Desktop: 90% de la largeur de la cellule
   };
 
+  // Vérifier si les composants contiennent des données de parcours d'apprentissage
+  const processComponents = (inputComponents: ComponentData[]): ComponentData[] => {
+    // Rechercher les composants de type 'LearningPath' qui contiennent des données JSON
+    const learningPathComponents = inputComponents.filter(comp => 
+      comp.type === 'LearningPath' && comp.props?.data
+    );
+    
+    // Si des composants de parcours d'apprentissage sont trouvés, les traiter
+    if (learningPathComponents.length > 0) {
+      const processedComponents = [...inputComponents];
+      
+      // Pour chaque composant de parcours d'apprentissage
+      learningPathComponents.forEach(lpComponent => {
+        // Trouver l'index du composant dans le tableau
+        const index = processedComponents.findIndex(c => c === lpComponent);
+        
+        if (index !== -1) {
+          // Remplacer le composant par les composants générés à partir des données JSON
+          const generatedComponents = createLearningPathComponents(lpComponent.props.data);
+          processedComponents.splice(index, 1, ...generatedComponents);
+        }
+      });
+      
+      return processedComponents;
+    }
+    
+    return inputComponents;
+  };
+  
+  // Traiter les composants pour intégrer les parcours d'apprentissage
+  const processedComponents = processComponents(components);
+  
   return (
     <div className="relative w-full min-h-[150vh] overflow-hidden p-4">
-      {components.map((component, index) => {
+      {processedComponents.map((component, index) => {
         const pos = positions[index];
         
         // Déterminer la taille maximale en fonction du type de composant
@@ -990,6 +1498,9 @@ export const RenderComponents: React.FC<RenderComponentsProps> = ({ components }
           // Ajuster la taille en fonction du type de composant
           if (componentType === 'FloatingMathCard' || componentType === 'FloatingCard') {
             return windowSize.width < 640 ? '90%' : windowSize.width < 1024 ? '80%' : `${pos.cellWidth * 0.95}%`;
+          } else if (componentType.includes('LearningPath')) {
+            // Donner plus d'espace aux composants du parcours d'apprentissage
+            return windowSize.width < 640 ? '95%' : windowSize.width < 1024 ? '90%' : `${pos.cellWidth * 0.98}%`;
           } else {
             return baseWidth;
           }

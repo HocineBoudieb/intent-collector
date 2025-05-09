@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { generateComponentsFromIntent } from "@/services/chatGptService"
-import { getUserState, generateWelcomePrompt, saveUserState } from "@/services/userStateService"
+import { getUserState, generateWelcomePrompt, saveUserState, resetLearningPath } from "@/services/userStateService"
 
 type Message = {
   role: "user" | "assistant" | "system"
@@ -107,6 +107,12 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
         examples: true,
         quizzes: true,
       },
+      learningPath: {
+        defined: false,
+        currentStepIndex: 0,
+        topic: '',
+        steps: [],
+      },
       topics: [],
       stats: {
         sessionsCount: 0,
@@ -123,6 +129,17 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
     
     // Réinitialiser l'état de la requête initiale
     setInitialRequestSent(false)
+  }
+  
+  // Fonction pour réinitialiser uniquement le parcours d'apprentissage
+  const resetLearningPathOnly = () => {
+    resetLearningPath()
+    // Ajouter un message système pour informer l'IA
+    const systemMessage: Message = { 
+      role: "system", 
+      content: "Le parcours d'apprentissage a été réinitialisé. Veuillez proposer un nouveau parcours adapté à l'utilisateur." 
+    }
+    setConversationHistory(prev => [...prev, systemMessage])
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -194,13 +211,22 @@ export default function IntentCollector({ onIntentResolved, apiUrl, systemPrompt
 
       <div className="flex items-center space-x-2">
         {conversationHistory.length > 0 && (
-          <button
-            onClick={clearConversationHistory}
-            className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors"
-            title="Effacer l'historique des conversations"
-          >
-            Effacer l'historique
-          </button>
+          <>
+            <button
+              onClick={clearConversationHistory}
+              className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors"
+              title="Effacer l'historique des conversations"
+            >
+              🗑️ Historique
+            </button>
+            <button
+              onClick={resetLearningPathOnly}
+              className="bg-orange-500 hover:bg-orange-600 text-white text-xs px-2 py-1 rounded-full shadow-lg transition-colors"
+              title="Réinitialiser le parcours d'apprentissage"
+            >
+              🔄 Parcours
+            </button>
+          </>
         )}
         
         <button

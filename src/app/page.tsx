@@ -3,6 +3,7 @@
 import { useState } from "react"
 import IntentCollector from "@/components/IntentCollector"
 import { RenderComponents } from "@/components/FloatingComponents"
+import Navigation from "@/components/Navigation"
 
 export default function Home() {
   const [renderedComponent, setRenderedComponent] = useState<React.ReactNode>(null)
@@ -28,6 +29,8 @@ export default function Home() {
 
   return (
     <main className="w-full bg-blue-200 relative p-8 min-h-[200vh]">
+      <Navigation />
+      
       {renderedComponent && (
         <div className="mb-10">
           {renderedComponent}
